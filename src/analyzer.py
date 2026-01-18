@@ -3,20 +3,15 @@
 
 from collections import Counter
 from utils import is_letter
+from utils import is_cipher_char
 
 
 def character_frequency(text):
-    """
-    Count frequency of each non-space character
-    """
     freq = Counter()
-
     for ch in text:
-        if ch != ' ' and ch != '\n':
+        if is_cipher_char(ch):
             freq[ch] += 1
-
     return freq
-
 
 def word_list(text):
     """

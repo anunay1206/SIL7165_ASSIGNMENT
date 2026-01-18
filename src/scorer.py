@@ -1,38 +1,53 @@
-# scorer.py
-# English language scoring functions
+# scorer.py - Quadgram scorer for your file
+import math
+import os
 
+class QuadgramScorer:
+    def __init__(self, filename="src/quadgrams.txt"):
+        self.quadgrams = {}
+        self.N = 0
+        
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"{filename} not found")
+        
+        print("Loading quadgrams...")
+        
+        # Load quadgrams
+        with open(filename, 'r', encoding='utf-8') as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    quad = parts[0].upper()
+                    count = int(parts[1])
+                    self.quadgrams[quad] = count
+                    self.N += count
+        
+        # Convert to log probabilities
+        for quad in self.quadgrams:
+            self.quadgrams[quad] = math.log10(float(self.quadgrams[quad]) / self.N)
+        
+        # Floor value for unseen quadgrams
+        self.floor = math.log10(0.01 / self.N)
+        
+        print(f"✓ Loaded {len(self.quadgrams)} quadgrams")
+    
+    def score(self, text):
+        """Score text based on quadgram frequencies"""
+        # Remove non-letters and convert to uppercase
+        text = ''.join(c.upper() for c in text if c.isalpha())
+        
+        score = 0
+        for i in range(len(text) - 3):
+            quad = text[i:i+4]
+            score += self.quadgrams.get(quad, self.floor)
+        
+        return score
 
-COMMON_BIGRAMS = [
-    "th", "he", "in", "er", "an", "re", "on", "at", "en", "nd"
-]
-
-COMMON_TRIGRAMS = [
-    "the", "and", "ing", "ent", "ion", "for", "tha"
-]
-
-RARE_PATTERNS = [
-    "zx", "qj", "jq", "xz", "qq"
-]
-
+# Global scorer - initialized once
+SCORER = None
 
 def english_score(text):
-    """
-    Returns a numeric score representing how English-like the text is
-    Higher score = more likely English
-    """
-    score = 0
-    text = text.lower()
-
-    # bigram scoring
-    for bg in COMMON_BIGRAMS:
-        score += text.count(bg) * 5
-
-    # trigram scoring
-    for tg in COMMON_TRIGRAMS:
-        score += text.count(tg) * 10
-
-    # penalty for unlikely sequences
-    for rp in RARE_PATTERNS:
-        score -= text.count(rp) * 20
-
-    return score
+    global SCORER
+    if SCORER is None:
+        SCORER = QuadgramScorer()
+    return SCORER.score(text)

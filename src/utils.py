@@ -1,6 +1,7 @@
 # utils.py
 # Helper functions used across the project
 
+ANCHORS = set([" ", ",", ".", ";", "!", "\n"])
 
 def read_file(filepath):
     """
@@ -35,3 +36,6 @@ def get_unique_symbols(text):
             symbols.add(ch)
 
     return symbols
+
+def is_cipher_char(ch):
+    return ch not in ANCHORS

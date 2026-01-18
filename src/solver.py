@@ -1,104 +1,105 @@
-# solver.py
-# Substitution cipher solver
-
+# solver.py - Simple hill climbing solver
 import random
 from scorer import english_score
 from collections import Counter
-
-ENGLISH_FREQ_ORDER = "etaoinrshdlucmfwypvbgkjqxz"
+from utils import is_cipher_char
 
 def decrypt_with_key(text, key):
-    """
-    Decrypt ciphertext using substitution key.
-    key: dict mapping cipher_char -> plaintext_char
-    """
     result = []
-
     for ch in text:
-        if ch in key:
+        if is_cipher_char(ch) and ch in key:
             result.append(key[ch])
         else:
             result.append(ch)
-
     return "".join(result)
+
+def get_freq_key(text):
+    """Generate key using frequency analysis"""
+    freq = Counter(ch for ch in text if is_cipher_char(ch))
+    sorted_cipher = [x[0] for x in freq.most_common()]
+    english_order = "etaoinshrdlcumwfgypbvkjxqz"
     
-
-def initial_key_from_frequency(text):
-    """
-    Generate initial substitution key using frequency analysis
-    """
-    freq = Counter()
-
-    for ch in text:
-        if ch != ' ' and ch != '\n':
-            freq[ch] += 1
-
-    # sort cipher symbols by frequency
-    cipher_symbols = [item[0] for item in freq.most_common()]
-
     key = {}
-
-    for i in range(min(len(cipher_symbols), 26)):
-        key[cipher_symbols[i]] = ENGLISH_FREQ_ORDER[i]
-
+    for i, cipher_char in enumerate(sorted_cipher):
+        if i < 26:
+            key[cipher_char] = english_order[i]
     return key
 
+def random_key(text):
+    """Generate random key"""
+    symbols = [ch for ch in set(text) if is_cipher_char(ch)]
+    letters = list("abcdefghijklmnopqrstuvwxyz")
+    random.shuffle(letters)
+    return dict(zip(symbols, letters[:len(symbols)]))
 
-def mutate_key(key):
-    """
-    Create a new key by swapping two plaintext letter assignments
-    """
+def swap_random(key):
+    """Swap two random letters"""
     new_key = key.copy()
-
-    if len(new_key) < 2:
-        return new_key
-
-    k1, k2 = random.sample(list(new_key.keys()), 2)
-
-    new_key[k1], new_key[k2] = new_key[k2], new_key[k1]
-
+    a, b = random.sample(list(new_key.keys()), 2)
+    new_key[a], new_key[b] = new_key[b], new_key[a]
     return new_key
 
-def hill_climb(ciphertext, max_iterations=15000):
-    """
-    Improve key using hill climbing
-    """
-    # initial key
-    current_key = initial_key_from_frequency(ciphertext)
-    current_plain = decrypt_with_key(ciphertext, current_key)
-    current_score = english_score(current_plain)
-
-    best_key = current_key
+def hill_climb(text, key, max_iter=20000):
+    """Hill climbing with random swaps"""
+    current = key.copy()
+    current_score = english_score(decrypt_with_key(text, current))
+    best = current
     best_score = current_score
-
-    for _ in range(max_iterations):
-        candidate_key = mutate_key(current_key)
-        candidate_plain = decrypt_with_key(ciphertext, candidate_key)
-        candidate_score = english_score(candidate_plain)
-
+    
+    count = 0
+    for i in range(max_iter):
+        candidate = swap_random(current)
+        candidate_score = english_score(decrypt_with_key(text, candidate))
+        
         if candidate_score > current_score:
-            current_key = candidate_key
+            current = candidate
             current_score = candidate_score
+            count = 0
+            
+            if current_score > best_score:
+                best = current
+                best_score = current_score
+        else:
+            count += 1
+            
+        # Early stopping if stuck
+        if count > 1000:
+            break
+    
+    return best, best_score
 
-            if candidate_score > best_score:
-                best_key = candidate_key
-                best_score = candidate_score
-
-    return best_key, best_score
-
-
-def solve(ciphertext, restarts=50):
-    """
-    Full solver with random restarts
-    """
+def solve(ciphertext, restarts=100):
+    """Solve with multiple restarts"""
+    print(f"\n{'='*70}")
+    print("SUBSTITUTION CIPHER SOLVER")
+    print(f"Running {restarts} hill-climbing attempts...")
+    print(f"{'='*70}\n")
+    
     best_key = None
-    best_score = float("-inf")
-
-    for _ in range(restarts):
-        key, score = hill_climb(ciphertext)
-
+    best_score = float('-inf')
+    
+    for i in range(restarts):
+        # Use frequency analysis for first half, random for second half
+        if i < restarts // 2:
+            key = get_freq_key(ciphertext)
+        else:
+            key = random_key(ciphertext)
+        
+        # Hill climb
+        key, score = hill_climb(ciphertext, key, max_iter=20000)
+        
         if score > best_score:
-            best_key = key
+            best_key = key.copy()
             best_score = score
-
+            plaintext = decrypt_with_key(ciphertext, key)
+            print(f"✓ Attempt {i+1}/{restarts}: Score = {score:.1f} [NEW BEST]")
+            print(f"  {plaintext[:75]}...")
+            print()
+        elif (i+1) % 20 == 0:
+            print(f"  Attempts {i-18}-{i+1}: Best score = {best_score:.1f}")
+    
+    print(f"\n{'='*70}")
+    print(f"FINAL SCORE: {best_score:.1f}")
+    print(f"{'='*70}\n")
+    
     return best_key
