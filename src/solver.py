@@ -68,15 +68,15 @@ def hill_climb(text, key, max_iter=20000):
     
     return best, best_score
 
-def solve(ciphertext, restarts=100):
+def solve(ciphertext, restarts=30):
     """Solve with multiple restarts"""
     print(f"\n{'='*70}")
     print("SUBSTITUTION CIPHER SOLVER")
-    print(f"Running {restarts} hill-climbing attempts...")
     print(f"{'='*70}\n")
     
     best_key = None
     best_score = float('-inf')
+    no_improvement_count = 0
     
     for i in range(restarts):
         # Use frequency analysis for first half, random for second half
@@ -92,14 +92,20 @@ def solve(ciphertext, restarts=100):
             best_key = key.copy()
             best_score = score
             plaintext = decrypt_with_key(ciphertext, key)
-            print(f"✓ Attempt {i+1}/{restarts}: Score = {score:.1f} [NEW BEST]")
-            print(f"  {plaintext[:75]}...")
-            print()
-        elif (i+1) % 20 == 0:
-            print(f"  Attempts {i-18}-{i+1}: Best score = {best_score:.1f}")
+            print(f"✓ Attempt {i+1}: Score = {score:.1f} [IMPROVEMENT]")
+            print(f"  {plaintext[:75]}...\n")
+            no_improvement_count = 0
+        else:
+            no_improvement_count += 1
+        
+        # Early stopping if no improvement for 15 consecutive attempts
+        if no_improvement_count >= 15:
+            print(f"No improvement for 15 attempts. Stopping early at attempt {i+1}/{restarts}")
+            break
     
     print(f"\n{'='*70}")
-    print(f"FINAL SCORE: {best_score:.1f}")
+    print(f"DECRYPTION COMPLETE")
+    print(f"Final Score: {best_score:.1f}")
     print(f"{'='*70}\n")
     
     return best_key
