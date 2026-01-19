@@ -1,47 +1,72 @@
 # patterns.py
-# Word pattern extraction
+# Key generation and mutation for hill climbing
+
+import random
+from utils import is_cipher_char
+from analyzer import get_frequency_order
+
+# English letter frequency order (most to least common)
+ENGLISH_FREQ_ORDER = "etaoinshrdlcumwfgypbvkjxqz"
 
 
-def word_pattern(word):
+def generate_frequency_key(text):
     """
-    Convert a word into its pattern form.
-    Example:
-    'xqqx' -> A B B A
+    Generate initial substitution key using frequency analysis
+    
+    Maps most frequent cipher symbols to most frequent English letters
+    
+    Args:
+        text: Ciphertext string
+        
+    Returns:
+        Dictionary mapping cipher chars to plaintext chars
     """
-    mapping = {}
-    pattern = []
-    next_char = 'A'
-
-    for ch in word:
-        if ch not in mapping:
-            mapping[ch] = next_char
-            next_char = chr(ord(next_char) + 1)
-
-        pattern.append(mapping[ch])
-
-    return ''.join(pattern)
+    cipher_symbols = get_frequency_order(text)
+    key = {}
+    
+    for i, cipher_char in enumerate(cipher_symbols):
+        if i < 26:
+            key[cipher_char] = ENGLISH_FREQ_ORDER[i]
+    
+    return key
 
 
-def build_word_patterns(words):
+def generate_random_key(text):
     """
-    Build dictionary:
-    word -> pattern
+    Generate a random substitution key
+    
+    Args:
+        text: Ciphertext string
+        
+    Returns:
+        Dictionary mapping cipher chars to plaintext chars
     """
-    patterns = {}
+    symbols = [ch for ch in set(text) if is_cipher_char(ch)]
+    letters = list("abcdefghijklmnopqrstuvwxyz")
+    random.shuffle(letters)
+    
+    return dict(zip(symbols, letters[:len(symbols)]))
 
-    for word in words:
-        patterns[word] = word_pattern(word)
 
-    return patterns
-
-
-def pattern_frequency(patterns):
+def mutate_key(key):
     """
-    Count how often each pattern occurs
+    Create a new key by swapping two random letter mappings
+    
+    This is the core mutation operation for hill climbing
+    
+    Args:
+        key: Current substitution key
+        
+    Returns:
+        New key with one random swap
     """
-    freq = {}
-
-    for pat in patterns.values():
-        freq[pat] = freq.get(pat, 0) + 1
-
-    return freq
+    new_key = key.copy()
+    
+    if len(new_key) < 2:
+        return new_key
+    
+    # Pick two random cipher characters and swap their plaintext mappings
+    a, b = random.sample(list(new_key.keys()), 2)
+    new_key[a], new_key[b] = new_key[b], new_key[a]
+    
+    return new_key

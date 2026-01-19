@@ -1,13 +1,18 @@
 # main.py
-# Run solver for a single ciphertext file
+# Entry point for substitution cipher solver
 
 import sys
 import os
-from utils import read_file, normalize_text
-from solver import solve, decrypt_with_key
+from utils import read_file, normalize_text, decrypt_with_key
+from solver import solve
 
 
 def main():
+    """
+    Main function to decrypt a ciphertext file
+    
+    Usage: python3 src/main.py <ciphertext-file>
+    """
     if len(sys.argv) != 2:
         print("Usage: python3 src/main.py <ciphertext-file>")
         return
@@ -22,16 +27,21 @@ def main():
     print("\nDecrypting:", filename)
     print("=" * 60)
 
-    text = read_file(path)
-    text = normalize_text(text)
+    # Read and normalize ciphertext
+    ciphertext = read_file(path)
+    ciphertext = normalize_text(ciphertext)
 
-    key = solve(text)
-    plaintext = decrypt_with_key(text, key)
+    # Solve to find the best key
+    key = solve(ciphertext)
+    
+    # Decrypt using the found key
+    plaintext = decrypt_with_key(ciphertext, key)
 
+    # Display result
     print("\nDecrypted text:\n")
     print(plaintext)
 
-    # save output
+    # Save output files
     pt_file = f"output/plaintext/plaintext_{filename}"
     key_file = f"output/keys/key_{filename}"
 
@@ -39,8 +49,8 @@ def main():
         f.write(plaintext)
 
     with open(key_file, "w", encoding="utf-8") as f:
-        for c, p in key.items():
-            f.write(f"{c} -> {p}\n")
+        for cipher_char, plain_char in key.items():
+            f.write(f"{cipher_char} -> {plain_char}\n")
 
     print("\nSaved:")
     print(" ", pt_file)

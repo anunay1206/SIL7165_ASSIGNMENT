@@ -1,75 +1,76 @@
-# solver.py - Simple hill climbing solver
-import random
+# solver.py
+# Main solver using hill climbing optimization
+
 from scorer import english_score
-from collections import Counter
-from utils import is_cipher_char
+from patterns import generate_frequency_key, generate_random_key, mutate_key
+from utils import decrypt_with_key
 
-def decrypt_with_key(text, key):
-    result = []
-    for ch in text:
-        if is_cipher_char(ch) and ch in key:
-            result.append(key[ch])
-        else:
-            result.append(ch)
-    return "".join(result)
 
-def get_freq_key(text):
-    """Generate key using frequency analysis"""
-    freq = Counter(ch for ch in text if is_cipher_char(ch))
-    sorted_cipher = [x[0] for x in freq.most_common()]
-    english_order = "etaoinshrdlcumwfgypbvkjxqz"
+def hill_climb(ciphertext, initial_key, max_iterations=20000):
+    """
+    Hill climbing optimization to improve decryption key
     
-    key = {}
-    for i, cipher_char in enumerate(sorted_cipher):
-        if i < 26:
-            key[cipher_char] = english_order[i]
-    return key
-
-def random_key(text):
-    """Generate random key"""
-    symbols = [ch for ch in set(text) if is_cipher_char(ch)]
-    letters = list("abcdefghijklmnopqrstuvwxyz")
-    random.shuffle(letters)
-    return dict(zip(symbols, letters[:len(symbols)]))
-
-def swap_random(key):
-    """Swap two random letters"""
-    new_key = key.copy()
-    a, b = random.sample(list(new_key.keys()), 2)
-    new_key[a], new_key[b] = new_key[b], new_key[a]
-    return new_key
-
-def hill_climb(text, key, max_iter=20000):
-    """Hill climbing with random swaps"""
-    current = key.copy()
-    current_score = english_score(decrypt_with_key(text, current))
-    best = current
+    Tries random swaps and keeps improvements until convergence
+    
+    Args:
+        ciphertext: Encrypted text
+        initial_key: Starting substitution key
+        max_iterations: Maximum number of iterations
+        
+    Returns:
+        Tuple of (best_key, best_score)
+    """
+    current_key = initial_key.copy()
+    current_plaintext = decrypt_with_key(ciphertext, current_key)
+    current_score = english_score(current_plaintext)
+    
+    best_key = current_key
     best_score = current_score
     
-    count = 0
-    for i in range(max_iter):
-        candidate = swap_random(current)
-        candidate_score = english_score(decrypt_with_key(text, candidate))
+    no_improvement_count = 0
+    
+    for iteration in range(max_iterations):
+        # Try a random swap
+        candidate_key = mutate_key(current_key)
+        candidate_plaintext = decrypt_with_key(ciphertext, candidate_key)
+        candidate_score = english_score(candidate_plaintext)
         
+        # Accept if better
         if candidate_score > current_score:
-            current = candidate
+            current_key = candidate_key
             current_score = candidate_score
-            count = 0
+            no_improvement_count = 0
             
+            # Update best if this is the best so far
             if current_score > best_score:
-                best = current
+                best_key = current_key
                 best_score = current_score
         else:
-            count += 1
-            
+            no_improvement_count += 1
+        
         # Early stopping if stuck
-        if count > 1000:
+        if no_improvement_count > 1000:
             break
     
-    return best, best_score
+    return best_key, best_score
 
-def solve(ciphertext, restarts=30):
-    """Solve with multiple restarts"""
+
+def solve(ciphertext, max_restarts=30):
+    """
+    Solve substitution cipher using hill climbing with multiple restarts
+    
+    Strategy:
+    - First half of restarts: Use frequency analysis as starting point
+    - Second half: Use random keys for diversity
+    - Early termination if no improvement for 15 consecutive restarts
+    
+    Args:
+        ciphertext: Encrypted text to decrypt
+        max_restarts: Maximum number of restart attempts
+        
+    Returns:
+        Best decryption key found
+    """
     print(f"\n{'='*70}")
     print("SUBSTITUTION CIPHER SOLVER")
     print(f"{'='*70}\n")
@@ -78,29 +79,34 @@ def solve(ciphertext, restarts=30):
     best_score = float('-inf')
     no_improvement_count = 0
     
-    for i in range(restarts):
-        # Use frequency analysis for first half, random for second half
-        if i < restarts // 2:
-            key = get_freq_key(ciphertext)
+    for restart in range(max_restarts):
+        # Choose starting key strategy
+        if restart < max_restarts // 2:
+            # Use frequency analysis for first half
+            initial_key = generate_frequency_key(ciphertext)
         else:
-            key = random_key(ciphertext)
+            # Use random keys for second half
+            initial_key = generate_random_key(ciphertext)
         
-        # Hill climb
-        key, score = hill_climb(ciphertext, key, max_iter=20000)
+        # Run hill climbing
+        key, score = hill_climb(ciphertext, initial_key, max_iterations=20000)
         
+        # Check if this is the best solution so far
         if score > best_score:
             best_key = key.copy()
             best_score = score
             plaintext = decrypt_with_key(ciphertext, key)
-            print(f"✓ Attempt {i+1}: Score = {score:.1f} [IMPROVEMENT]")
+            
+            print(f"✓ Attempt {restart + 1}: Score = {score:.1f} [IMPROVEMENT]")
             print(f"  {plaintext[:75]}...\n")
+            
             no_improvement_count = 0
         else:
             no_improvement_count += 1
         
-        # Early stopping if no improvement for 15 consecutive attempts
+        # Early stopping if no improvement for many attempts
         if no_improvement_count >= 15:
-            print(f"No improvement for 15 attempts. Stopping early at attempt {i+1}/{restarts}")
+            print(f"No improvement for 15 attempts. Stopping early at attempt {restart + 1}/{max_restarts}")
             break
     
     print(f"\n{'='*70}")

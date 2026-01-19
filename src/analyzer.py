@@ -1,38 +1,26 @@
 # analyzer.py
-# Phase 1: Ciphertext analysis
+# Frequency analysis for ciphertext
 
 from collections import Counter
-from utils import is_letter
 from utils import is_cipher_char
 
 
-def character_frequency(text):
+def get_frequency_order(text):
+    """
+    Get cipher characters sorted by frequency (descending)
+    
+    This is used to generate initial keys via frequency analysis
+    
+    Args:
+        text: Ciphertext string
+        
+    Returns:
+        List of cipher characters sorted by frequency
+    """
     freq = Counter()
     for ch in text:
         if is_cipher_char(ch):
             freq[ch] += 1
-    return freq
-
-def word_list(text):
-    """
-    Extract words from ciphertext
-    """
-    words = []
-
-    for word in text.split():
-        if len(word) > 0:
-            words.append(word)
-
-    return words
-
-
-def word_length_frequency(words):
-    """
-    Count frequency of word lengths
-    """
-    length_freq = Counter()
-
-    for word in words:
-        length_freq[len(word)] += 1
-
-    return length_freq
+    
+    sorted_chars = [item[0] for item in freq.most_common()]
+    return sorted_chars

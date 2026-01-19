@@ -1,41 +1,69 @@
 # utils.py
-# Helper functions used across the project
+# Core utility functions
 
+# Characters that are NOT encrypted (anchors)
 ANCHORS = set([" ", ",", ".", ";", "!", "\n"])
+
 
 def read_file(filepath):
     """
-    Reads a text file and returns its content as a string
+    Read a text file and return its content
+    
+    Args:
+        filepath: Path to the file
+        
+    Returns:
+        File content as string
     """
     with open(filepath, "r", encoding="utf-8") as f:
         return f.read()
 
+
 def normalize_text(text):
     """
-    Convert text to lowercase.
-    We do NOT remove symbols because substitution cipher uses them.
+    Convert text to lowercase
+    
+    Note: We do NOT remove symbols because substitution cipher uses them
+    
+    Args:
+        text: Input text
+        
+    Returns:
+        Lowercase text
     """
     return text.lower()
 
 
-def is_letter(ch):
-    """
-    Check if character is an English alphabet letter
-    """
-    return 'a' <= ch <= 'z'
-
-
-def get_unique_symbols(text):
-    """
-    Returns a set of unique non-space symbols in the ciphertext
-    """
-    symbols = set()
-
-    for ch in text:
-        if ch != ' ' and ch != '\n':
-            symbols.add(ch)
-
-    return symbols
-
 def is_cipher_char(ch):
+    """
+    Check if character should be decrypted
+    
+    Everything except spaces and punctuation is encrypted
+    
+    Args:
+        ch: Character to check
+        
+    Returns:
+        True if character is encrypted, False otherwise
+    """
     return ch not in ANCHORS
+
+
+def decrypt_with_key(text, key):
+    """
+    Decrypt ciphertext using a substitution key
+    
+    Args:
+        text: Ciphertext string
+        key: Dictionary mapping cipher chars to plaintext chars
+        
+    Returns:
+        Decrypted plaintext string
+    """
+    result = []
+    for ch in text:
+        if is_cipher_char(ch) and ch in key:
+            result.append(key[ch])
+        else:
+            result.append(ch)
+    return "".join(result)
